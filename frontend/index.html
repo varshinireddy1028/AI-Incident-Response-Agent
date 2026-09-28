@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Incident Response Agent</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        textarea, input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            margin: 8px 0;
+            background: #0f172a;
+            color: white;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        textarea {
+            height: 120px;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        #status {
+            color: #38bdf8;
+        }
+
+        .memory {
+            background: #0f172a;
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid #38bdf8;
+        }
+
+        #analysis {
+            background: #0f172a;
+            padding: 15px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        #success {
+            color: #86efac;
+        }
+
+        #error {
+            color: #fca5a5;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>AI Incident Response Agent</h1>
+
+    <div class="card">
+        <h2>Report an Incident</h2>
+
+        <textarea id="incident"
+            placeholder="Example: Payment API is returning 500 errors."></textarea>
+
+        <button onclick="analyzeIncident()">Analyze Incident</button>
+
+        <p id="status"></p>
+        <p id="error"></p>
+    </div>
+
+    <div class="card" id="results" style="display:none;">
+
+        <h2>Similar Past Incidents</h2>
+
+        <div id="memories"></div>
+
+        <h2>AI Analysis</h2>
+
+        <div id="analysis"></div>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Store Resolution in Hindsight</h2>
+
+        <input id="rootCause" placeholder="Root cause">
+
+        <input id="resolution" placeholder="Resolution">
+
+        <input id="outcome" placeholder="Outcome">
+
+        <button onclick="storeResolution()">
+            Store Resolution
+        </button>
+
+        <p id="success"></p>
+
+    </div>
+
+</div>
+
+
+<script>
+
+async function analyzeIncident() {
+
+    const incident =
+        document.getElementById("incident").value;
+
+    if (!incident.trim()) {
+        document.getElementById("error").textContent =
+            "Please enter an incident.";
+        return;
+    }
+
+    document.getElementById("status").textContent =
+        "Analyzing incident...";
+
+    document.getElementById("error").textContent = "";
+
+    try {
+
+        const response = await fetch(
+            "http://127.0.0.1:8000/analyze",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    description: incident
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail || "Backend error"
+            );
+        }
+
+        document.getElementById("status").textContent =
+            "Analysis complete.";
+
+        document.getElementById("results").style.display =
+            "block";
+
+        const memories =
+            document.getElementById("memories");
+
+        memories.innerHTML = "";
+
+        data.similar_incidents.forEach(function(memory) {
+
+            const div = document.createElement("div");
+
+            div.className = "memory";
+
+            div.textContent = memory;
+
+            memories.appendChild(div);
+
+        });
+
+        document.getElementById("analysis").textContent =
+            data.ai_analysis;
+
+    }
+
+    catch (error) {
+
+        document.getElementById("error").textContent =
+            "Error: " + error.message;
+
+        document.getElementById("status").textContent = "";
+
+        console.error(error);
+
+    }
+}
+
+
+async function storeResolution() {
+
+    const incident =
+        document.getElementById("incident").value;
+
+    const rootCause =
+        document.getElementById("rootCause").value;
+
+    const resolution =
+        document.getElementById("resolution").value;
+
+    const outcome =
+        document.getElementById("outcome").value;
+
+    if (!incident || !rootCause || !resolution || !outcome) {
+
+        document.getElementById("success").textContent =
+            "Please fill all fields.";
+
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            "http://127.0.0.1:8000/resolve",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    incident: incident,
+
+                    root_cause: rootCause,
+
+                    resolution: resolution,
+
+                    outcome: outcome
+
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+
+            document.getElementById("success").textContent =
+                "Resolution stored successfully in Hindsight!";
+
+        } else {
+
+            document.getElementById("success").textContent =
+                "Error: " + (data.detail || "Could not store resolution.");
+
+        }
+
+    }
+
+    catch (error) {
+
+        document.getElementById("success").textContent =
+            "Could not connect to backend.";
+
+        console.error(error);
+
+    }
+}
+
+</script>
+
+</body>
+</html>
